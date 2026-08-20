@@ -1,6 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod storage;
-use storage::NoteData;
+use storage::{NoteData, ConfigData};
 
 
 #[tauri::command]
