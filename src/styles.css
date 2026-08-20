@@ -1,0 +1,23 @@
+html, body{
+  margin: 0;
+  padding: 0;
+  overflow: hidden
+}
+
+#note{
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(119, 119, 201);
+  padding: 16px;
+  box-sizing: border-box;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 14px;
+  color: aliceblue;
+}
+
+#titlebar{
+  height: 20px;
+  width: 100%;
+  cursor: grab;
+  background-color: aliceblue;
+}
