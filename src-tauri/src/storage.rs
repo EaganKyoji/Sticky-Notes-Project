@@ -18,7 +18,7 @@ pub fn save_config(x: i32, y: i32, width: u32, height: u32)-> Result<(), String>
 
 pub fn load_config() -> Result<ConfigData, String>{
     let default = ConfigData{x: 100, y: 100, width: 300, height: 400};
-    let json_string = fs::read_to_string("data/config.json")/unwrap_or_else(|_| serde_json::to_string(&default).unwrap());
+    let json_string = fs::read_to_string("data/config.json").unwrap_or_else(|_| serde_json::to_string(&default).unwrap());
 
     let data: ConfigData = serde_json::from_str(&json_string).map_err(|e| e.to_string())?;
 
