@@ -1,5 +1,5 @@
 const { invoke } = window.__TAURI__.core;
-const { getCurrentWindow, LogicalPosition, LogicalSize} = window.__TAURI__.window;
+const { getCurrentWindow, PhysicalPosition, PhysicalSize} = window.__TAURI__.window;
 const  appWindow = getCurrentWindow();
 
 const saveConfig = debounce(async () => {
@@ -52,14 +52,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 window.addEventListener('DOMContentLoaded', async () => {
-  const noteData = await invoke('load_note');
-  notEl.value = noteData.content;
+  try {
+    const noteData = await invoke('load_note');
+    notEl.value = noteData.content;
 
-  try{
     const config = await invoke('load_config');
-    await appWindow.setPosition(new LogicalPosition(config.x, config.y));
-    await appWindow.setSize(new LogicalSize(config.width, config.height));
+    await appWindow.setPosition(new PhysicalPosition(config.x, config.y));
+    await appWindow.setSize(new PhysicalSize(config.width, config.height));
   } catch (err) {
-    console.error("Gagal memuat posisi/ukuran: ", err);
+    console.error('Gagal memuat data:', err);
   }
 });
