@@ -1,4 +1,4 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+use tauri::Manager;
 mod storage;
 use storage::{NoteData, ConfigData};
 use tauri_plugin_autostart::MacosLauncher;
@@ -6,30 +6,35 @@ use tauri_plugin_autostart::ManagerExt;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    Manager,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-
 #[tauri::command]
-fn save_note(content: String) -> Result<(), String> {
-    storage::save_note(content)
+fn save_note(app: tauri::AppHandle, content: String) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    storage::save_note(&dir, content)
 }
 
 #[tauri::command]
-fn load_note() -> Result<NoteData, String> {
-    storage::load_note()
+fn load_note(app: tauri::AppHandle) -> Result<NoteData, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    storage::load_note(&dir)
 }
 
 #[tauri::command]
-fn save_config(x: i32, y: i32, width: u32, height: u32) -> Result<(), String> {
-    storage::save_config(x, y, width, height)
+fn save_config(app: tauri::AppHandle, x: i32, y: i32, width: u32, height: u32) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    storage::save_config(&dir, x, y, width, height)
 }
 
 #[tauri::command]
-fn load_config() -> Result<ConfigData, String> {
-    storage::load_config()
+fn load_config(app: tauri::AppHandle) -> Result<ConfigData, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    storage::load_config(&dir)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
