@@ -103,8 +103,21 @@ pub fn run() {
             
             let main_window = app.get_webview_window("main").unwrap();
             let args: Vec<String> = std::env::args().collect();
-            if args.contains(&"--minimized".to_string()) {
-                let _ = main_window.hide();
+            let is_autostart = args.contains(&"--minimized".to_string());
+            if is_autostart {
+                let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    let app_handle2 = app_handle.clone();
+                    let _ = app_handle.run_on_main_thread(move || {
+                        if let Some(window) = app_handle2.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    });
+                });
+            }else{
+                let _ = main_window.show();
             }
             let window_clone = main_window.clone();
             main_window.on_window_event(move |event| {
