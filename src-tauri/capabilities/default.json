@@ -12,6 +12,7 @@
     "core:event:allow-listen",
     "core:window:allow-set-position",
     "core:window:allow-set-size",
-    "autostart:default"
+    "autostart:default",
+    "global-shortcut:default"
   ]
 }

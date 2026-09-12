@@ -8,6 +8,9 @@ use tauri::{
     tray::TrayIconBuilder,
     Manager,
 };
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 
 #[tauri::command]
 fn save_note(content: String) -> Result<(), String> {
@@ -36,7 +39,25 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new().with_handler(|app, shortcut, event| {
+                let toggle_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
+                if shortcut == &toggle_shortcut && event.state() == ShortcutState::Pressed {
+                    if let Some(window) = app.get_webview_window("main") {
+                        if window.is_visible().unwrap_or(false) {
+                            let _ = window.hide();
+                        } else {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                }
+            })
+            .build()
+        )
         .setup(|app| {
+            let toggle_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
+            app.global_shortcut().register(toggle_shortcut)?;
             let autostart_manager = app.autolaunch();
             let _ = autostart_manager.enable();
 
