@@ -41,11 +41,16 @@ fn load_config(app: tauri::AppHandle) -> Result<ConfigData, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app_handle2.get_webview_window("main") {
+            if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
                 let _ = window.set_always_on_top(true);
-                let _ = window.set_always_on_top(false);
+                
+                let window_clone = window.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    let _ = window_clone.set_always_on_top(false);
+                });
             }
         }))
         .plugin(tauri_plugin_autostart::init(
