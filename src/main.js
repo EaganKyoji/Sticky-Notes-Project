@@ -5,6 +5,11 @@ const  appWindow = getCurrentWindow();
 const saveConfig = debounce(async () => {
   const position = await appWindow.outerPosition();
   const size = await appWindow.outerSize();
+
+  if (position.x <= -10000 || position.y <= -10000) {
+    return;
+  }
+  
   try{
     await invoke('save_config', {
       x: position.x,

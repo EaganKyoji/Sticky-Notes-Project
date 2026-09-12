@@ -40,6 +40,12 @@ fn load_config(app: tauri::AppHandle) -> Result<ConfigData, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
@@ -94,8 +100,12 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
-
+            
             let main_window = app.get_webview_window("main").unwrap();
+            let args: Vec<String> = std::env::args().collect();
+            if args.contains(&"--minimized".to_string()) {
+                let _ = main_window.hide();
+            }
             let window_clone = main_window.clone();
             main_window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
