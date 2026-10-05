@@ -2,7 +2,7 @@
   i made this app is because i want to get flexible with my sticky notes. I want to make customization with my notes so that i can feel joy whenever i opened my laptop. This app is aiming for that joy and trying to solve the customization problem. 
 
 # Patch and Feature
-## !.0
+## 1.0
 Now it can be used, but still has limitations that only display one page of sticky notes. Also, the customization problem is still not done yet, it might need the dashboard for the sticky notes to customize and adding one or more sticky notes. Release version wont be released until future patch number four is done
 
 # Tech Stack
