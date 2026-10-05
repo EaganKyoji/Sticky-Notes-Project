@@ -37,15 +37,39 @@ fn load_config(app: tauri::AppHandle) -> Result<ConfigData, String> {
     storage::load_config(&dir)
 }
 
+/// Menampilkan jendela utama dengan benar:
+/// restore dari minimize, tampilkan, paksa webview repaint, lalu fokus.
+fn show_main_window(window: &tauri::WebviewWindow) {
+    println!(
+        "[show] minimized={:?} visible={:?} pos={:?} size={:?}",
+        window.is_minimized(),
+        window.is_visible(),
+        window.outer_position(),
+        window.outer_size()
+    );
+
+    let _ = window.unminimize();
+    let _ = window.show();
+
+    // Workaround WebView2: geser ukuran 1px lalu kembalikan agar konten digambar ulang
+    if let Ok(size) = window.inner_size() {
+        let _ = window.set_size(tauri::PhysicalSize::new(size.width + 1, size.height));
+        let _ = window.set_size(size);
+    }
+
+    let _ = window.set_focus();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            println!("=== SINGLE INSTANCE CALLBACK TERPANGGIL ===");
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
+                show_main_window(&window);
+
+                // Trik always_on_top agar jendela naik ke depan
                 let _ = window.set_always_on_top(true);
-                
                 let window_clone = window.clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_millis(300));
@@ -65,8 +89,7 @@ pub fn run() {
                         if window.is_visible().unwrap_or(false) {
                             let _ = window.hide();
                         } else {
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                            show_main_window(&window);
                         }
                     }
                 }
@@ -92,8 +115,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                            show_main_window(&window);
                         }
                     }
                     "hide" => {
@@ -107,7 +129,7 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
-            
+
             let main_window = app.get_webview_window("main").unwrap();
             let args: Vec<String> = std::env::args().collect();
             let is_autostart = args.contains(&"--minimized".to_string());
@@ -123,9 +145,10 @@ pub fn run() {
                         }
                     });
                 });
-            }else{
+            } else {
                 let _ = main_window.show();
             }
+
             let window_clone = main_window.clone();
             main_window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
