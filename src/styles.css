@@ -4,6 +4,13 @@ html, body{
   overflow: hidden
 }
 
+textarea {
+  scrollbar-width: none;
+}
+textarea::-webkit-scrollbar {
+  display: none;
+}
+
 #note{
   width: 100vw;
   height: 100vh;

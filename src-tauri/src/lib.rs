@@ -37,26 +37,12 @@ fn load_config(app: tauri::AppHandle) -> Result<ConfigData, String> {
     storage::load_config(&dir)
 }
 
-/// Menampilkan jendela utama dengan benar:
-/// restore dari minimize, tampilkan, paksa webview repaint, lalu fokus.
+/// Menampilkan jendela utama.
+/// unminimize() wajib: show() saja tidak me-restore jendela yang
+/// sedang minimized (mis. setelah Win+D).
 fn show_main_window(window: &tauri::WebviewWindow) {
-    println!(
-        "[show] minimized={:?} visible={:?} pos={:?} size={:?}",
-        window.is_minimized(),
-        window.is_visible(),
-        window.outer_position(),
-        window.outer_size()
-    );
-
     let _ = window.unminimize();
     let _ = window.show();
-
-    // Workaround WebView2: geser ukuran 1px lalu kembalikan agar konten digambar ulang
-    if let Ok(size) = window.inner_size() {
-        let _ = window.set_size(tauri::PhysicalSize::new(size.width + 1, size.height));
-        let _ = window.set_size(size);
-    }
-
     let _ = window.set_focus();
 }
 
@@ -64,11 +50,10 @@ fn show_main_window(window: &tauri::WebviewWindow) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            println!("=== SINGLE INSTANCE CALLBACK TERPANGGIL ===");
             if let Some(window) = app.get_webview_window("main") {
                 show_main_window(&window);
 
-                // Trik always_on_top agar jendela naik ke depan
+                // Naikkan jendela ke depan sebentar, lalu kembalikan
                 let _ = window.set_always_on_top(true);
                 let window_clone = window.clone();
                 std::thread::spawn(move || {
@@ -82,31 +67,35 @@ pub fn run() {
             Some(vec!["--minimized"]),
         ))
         .plugin(
-            tauri_plugin_global_shortcut::Builder::new().with_handler(|app, shortcut, event| {
-                let toggle_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
-                if shortcut == &toggle_shortcut && event.state() == ShortcutState::Pressed {
-                    if let Some(window) = app.get_webview_window("main") {
-                        if window.is_visible().unwrap_or(false) {
-                            let _ = window.hide();
-                        } else {
-                            show_main_window(&window);
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    let toggle_shortcut =
+                        Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
+                    if shortcut == &toggle_shortcut && event.state() == ShortcutState::Pressed {
+                        if let Some(window) = app.get_webview_window("main") {
+                            // Jendela minimized dianggap "tidak tampil" agar shortcut me-restore-nya
+                            let showing = window.is_visible().unwrap_or(false)
+                                && !window.is_minimized().unwrap_or(false);
+                            if showing {
+                                let _ = window.hide();
+                            } else {
+                                show_main_window(&window);
+                            }
                         }
                     }
-                }
-            })
-            .build()
+                })
+                .build(),
         )
         .setup(|app| {
-            let toggle_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
+            let toggle_shortcut =
+                Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
             app.global_shortcut().register(toggle_shortcut)?;
-            let autostart_manager = app.autolaunch();
-            let _ = autostart_manager.enable();
+            let _ = app.autolaunch().enable();
 
             let show_item = MenuItem::with_id(app, "show", "Tampilkan", true, None::<&str>)?;
             let hide_item = MenuItem::with_id(app, "hide", "Sembunyikan", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
             let quit_item = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
-
             let menu = Menu::with_items(app, &[&show_item, &hide_item, &separator, &quit_item])?;
 
             TrayIconBuilder::new()
@@ -131,35 +120,41 @@ pub fn run() {
                 .build(app)?;
 
             let main_window = app.get_webview_window("main").unwrap();
-            let args: Vec<String> = std::env::args().collect();
-            let is_autostart = args.contains(&"--minimized".to_string());
+            let is_autostart = std::env::args().any(|a| a == "--minimized");
+
             if is_autostart {
+                // Saat autostart, tunggu 5 detik agar desktop selesai dimuat
                 let app_handle = app.handle().clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_secs(5));
-                    let app_handle2 = app_handle.clone();
+                    let handle_for_main = app_handle.clone();
                     let _ = app_handle.run_on_main_thread(move || {
-                        if let Some(window) = app_handle2.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                        if let Some(window) = handle_for_main.get_webview_window("main") {
+                            show_main_window(&window);
                         }
                     });
                 });
             } else {
-                let _ = main_window.show();
+                show_main_window(&main_window);
             }
 
+            // Tombol close hanya menyembunyikan jendela ke tray
             let window_clone = main_window.clone();
             main_window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    window_clone.hide().unwrap();
                     api.prevent_close();
+                    let _ = window_clone.hide();
                 }
             });
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![save_note, load_note, save_config, load_config])
+        .invoke_handler(tauri::generate_handler![
+            save_note,
+            load_note,
+            save_config,
+            load_config
+        ])
         .run(tauri::generate_context!())
         .expect("error saat menjalankan aplikasi");
 }
